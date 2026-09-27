@@ -36,7 +36,12 @@ with the other adapters. The adapter lives in
    never interchangeable.
 
 The production deploy script refuses to deploy with the adapter enabled and
-the snapshot, version, or `BOXD_API_KEY` secret missing.
+the snapshot, version, or `BOXD_API_KEY` secret missing, or cloud billing
+enforcement enabled. Runtime placement also excludes boxd while billing is enforced.
+
+When `BOXD_ORG` is set, the publisher creates a shared organization template so
+another identity in that organization can restore it. Without an explicit org,
+publish with the same API key owner used by the Worker.
 
 ## Behaviour that differs from Boat and E2B
 

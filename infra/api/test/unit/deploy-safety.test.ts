@@ -134,11 +134,14 @@ else process.exit(2);
 		"version",
 		"secret",
 		"auth-provider",
+		"billing",
 		"ready",
 	])("checks enabled boxd prerequisites before deployment: %s", async (scenario) => {
 		const directory = await mkdtemp(join(tmpdir(), "zuse-deploy-test-"));
 		try {
 			const config = parse(await readFile(productionWranglerConfigUrl, "utf8"));
+			config.vars.CLOUD_BILLING_ENFORCEMENT_ENABLED =
+				scenario === "billing" ? "true" : "false";
 			// The login authority may only name an enabled adapter.
 			config.vars.BOXD_ADAPTER_ENABLED =
 				scenario === "auth-provider" ? "false" : "true";
@@ -198,7 +201,9 @@ else process.exit(2);
 							? "BOXD_TEMPLATE_VERSION"
 							: scenario === "auth-provider"
 								? "CLOUD_AUTH_PROVIDER_ID"
-								: "BOXD_API_KEY",
+								: scenario === "billing"
+									? "CLOUD_BILLING_ENFORCEMENT_ENABLED"
+									: "BOXD_API_KEY",
 				);
 			}
 		} finally {

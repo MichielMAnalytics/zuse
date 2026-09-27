@@ -20,8 +20,14 @@ runtime_port=47837
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 provision_dir=/tmp/zuse-provision
+# Organization templates must be restorable by the Worker's identity too.
+# Without an explicit org, use the same API key owner for publishing and runtime.
+sharing_args=()
 org_args=()
-[ -n "${BOXD_ORG:-}" ] && org_args=(--org "$BOXD_ORG")
+if [ -n "${BOXD_ORG:-}" ]; then
+	org_args=(--org "$BOXD_ORG")
+	sharing_args=(--shared)
+fi
 
 # Restores keep the snapshot's size, so publish at the deployment's default
 # placement to spare every workspace a resize reboot.
@@ -46,7 +52,7 @@ echo "==> building runtime artifacts"
 
 echo "==> creating builder machine"
 # Isolation is inherited by every restore, matching the adapter's placement.
-machine_id="$(boxd machine new ${org_args[@]+"${org_args[@]}"} "zuse-template-builder-$(date +%s)" --isolated ${size_args[@]+"${size_args[@]}"} --auto-hibernate-timeout 0 --json | jq -r '.id')"
+machine_id="$(boxd machine new ${org_args[@]+"${org_args[@]}"} "zuse-template-builder-$(date +%s)" --isolated ${sharing_args[@]+"${sharing_args[@]}"} ${size_args[@]+"${size_args[@]}"} --auto-hibernate-timeout 0 --json | jq -r '.id')"
 if [[ -z "$machine_id" || "$machine_id" == "null" ]]; then
 	echo "error: boxd machine new returned no machine id" >&2
 	exit 1

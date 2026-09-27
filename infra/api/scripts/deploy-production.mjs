@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { parse } from "jsonc-parser";
 import { readBoatEnvironment } from "../src/boat-environment.ts";
+import { supportsSandboxBilling } from "../src/sandbox-provider-availability.ts";
 
 const confirmation = "deploy-api.zuse.sh";
 const configPath = "wrangler.production.jsonc";
@@ -22,6 +23,18 @@ const vars = config.vars ?? {};
 const boat = readBoatEnvironment(vars);
 const boatEnabled = boat.BOAT_ADAPTER_ENABLED === "true";
 const boxdEnabled = vars.BOXD_ADAPTER_ENABLED === "true";
+if (
+	boxdEnabled &&
+	!supportsSandboxBilling(
+		"boxd",
+		vars.CLOUD_BILLING_ENFORCEMENT_ENABLED === "true",
+	)
+) {
+	console.error(
+		"BOXD_ADAPTER_ENABLED cannot be true when CLOUD_BILLING_ENFORCEMENT_ENABLED is true.",
+	);
+	process.exit(1);
+}
 const requiredValues = {
 	...(boatEnabled
 		? {

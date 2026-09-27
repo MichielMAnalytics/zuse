@@ -41,6 +41,7 @@ import { resolveMachineProviderRuntime } from "./machine-provider-config.ts";
 import { MachineStorePg } from "./machine-store.ts";
 import { ManagedTunnelProviderLive } from "./managed-tunnel.ts";
 import { PushDeliveryLive } from "./push.ts";
+import { availableSandboxProviders } from "./sandbox-provider-availability.ts";
 import {
 	resolveSandboxProviderRuntime,
 	SandboxOfferConfiguration,
@@ -298,14 +299,10 @@ const build = (env: Env, directStartup = false): ReturnType<typeof makeApi> => {
 				}
 			: {}),
 	};
-	const availableSandboxProviderIds = new Set(
-		sandboxProvider.configuredProviders
-			.filter(
-				(provider) =>
-					provider.advertised &&
-					(env.POLAR_ENVIRONMENT === "sandbox" || provider.productionReady),
-			)
-			.map((provider) => provider.providerId),
+	const availableSandboxProviderIds = availableSandboxProviders(
+		sandboxProvider.configuredProviders,
+		env.POLAR_ENVIRONMENT === "sandbox",
+		env.CLOUD_BILLING_ENFORCEMENT_ENABLED === "true",
 	);
 	const persistentCheckoutReady =
 		billing.liveCheckoutEnabled &&

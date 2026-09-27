@@ -1498,10 +1498,12 @@ export const snapshotCloudAuthAuthority = Effect.fn(
 	// The pure check first: a target off E2B never seeds, whichever provider
 	// the authority runs on, and answering that needs no configuration.
 	if (!canSeedCloudAuthSnapshot(targetProviderId)) return undefined;
-	if (!canSeedCloudAuthSnapshot(targetProviderId, yield* authorityProviderId))
-		return undefined;
 	const recovered = yield* recoverAuthority(accountId);
 	if (recovered === null) return undefined;
+	if (
+		!canSeedCloudAuthSnapshot(targetProviderId, recovered.provider.providerId)
+	)
+		return undefined;
 	const authority = yield* ensureRunning(recovered);
 	yield* readCloudAuthStatus(accountId, true);
 	return yield* authority.provider
