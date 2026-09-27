@@ -61,11 +61,12 @@
 		// Preserve existing runtime and broker credentials until the coordinated
 		// issuer cutover in internal-docs/cloud/api-domain-cutover.md is complete.
 		"API_ISSUER": "https://api-staging.stuff.md",
+		"API_PUBLIC_ORIGIN": "https://api-staging.zuse.sh",
 		"WORKOS_ISSUER": "https://api.workos.com",
 		"WORKOS_JWKS_URL": "https://api.workos.com/sso/jwks/client_01KW6ZEZKVMZ0G429A89XZD83Q",
 		"API_MINT_PUBLIC_JWK": "{\"crv\":\"Ed25519\",\"x\":\"rLuckqLkdtwPKtradClTam6ovMItDJZ3SNbBQXFjJWw\",\"kty\":\"OKP\"}",
 		"MAX_ENVIRONMENTS_PER_ACCOUNT": "5",
-		"ALLOWED_BROWSER_ORIGINS": "https://code.zuse.sh",
+		"ALLOWED_BROWSER_ORIGINS": "https://code.zuse.sh,https://code-staging.zuse.sh",
 		"GITHUB_APP_ID": "4663095",
 		"GITHUB_APP_SLUG": "zusesh",
 		"GITHUB_APP_CLIENT_ID": "Iv23liToo4tc4RcbDNpV",

@@ -35,6 +35,7 @@ if (
 	);
 	process.exit(1);
 }
+const slackEnabled = vars.SLACK_ENABLED === "true";
 const requiredValues = {
 	...(boatEnabled
 		? {
@@ -63,6 +64,16 @@ const requiredValues = {
 		vars.POLAR_PRODUCT_CLOUD_WORKSPACE_STANDARD_V1,
 	POLAR_CLOUD_OVERAGE_METER_ID: vars.POLAR_CLOUD_OVERAGE_METER_ID,
 	CLOUD_BILLING_CUTOVER_AT: vars.CLOUD_BILLING_CUTOVER_AT,
+	...(slackEnabled
+		? {
+				SLACK_APP_ID: vars.SLACK_APP_ID,
+				SLACK_CLIENT_ID: vars.SLACK_CLIENT_ID,
+				SLACK_PUBLIC_ORIGIN: vars.SLACK_PUBLIC_ORIGIN,
+				SLACK_JOBS: config.queues?.producers?.find(
+					(producer) => producer.binding === "SLACK_JOBS",
+				)?.queue,
+			}
+		: {}),
 };
 const missingValues = Object.entries(requiredValues)
 	.filter(([, value]) => typeof value !== "string" || value.trim() === "")
@@ -120,6 +131,7 @@ const requiredSecrets = [
 	"POLAR_ACCESS_TOKEN",
 	"POLAR_WEBHOOK_SECRET",
 	"GITHUB_APP_PRIVATE_KEY",
+	...(slackEnabled ? ["SLACK_CLIENT_SECRET", "SLACK_SIGNING_SECRET"] : []),
 ];
 const missingSecrets = requiredSecrets.filter(
 	(secret) => !installedSecrets.has(secret),
