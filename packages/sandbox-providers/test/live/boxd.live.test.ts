@@ -270,6 +270,59 @@ describe.skipIf(apiKey === undefined || templateSnapshot === undefined)(
 					await canary(created.providerSandboxId, "/tmp/zuse-live-replaced-ok"),
 				).toBe(true);
 
+				// Exercise the actual installed server, including its protected HTTP
+				// surface, through the same proxy used by cloud workspaces.
+				await Effect.runPromise(
+					adapter.replaceProcess(
+						created.providerSandboxId,
+						{ tag: "zuse-live-http" },
+						{
+							command: "/usr/local/bin/zuse",
+							args: [
+								"serve",
+								"--foreground",
+								"--no-account",
+								"--host",
+								"127.0.0.1",
+								"--port",
+								"47837",
+								"--data-dir",
+								"/home/zuse/.zuse-live-runtime",
+							],
+							env: {
+								ZUSE_ENABLE_PAIRING: "0",
+								ZUSE_MACHINE_RUNTIME_ROLE: "cloud-environment",
+							},
+							user: "zuse",
+						},
+					),
+				);
+				const protectedRuntime = () =>
+					pollUntil(
+						() =>
+							fetch(`${endpoint.httpBaseUrl}/?runtime=${runId}`, {
+								signal: AbortSignal.timeout(10_000),
+							}).catch(() => new Response(null, { status: 503 })),
+						(response) => response.status === 401,
+					);
+				expect((await protectedRuntime()).status).toBe(401);
+				const sshResponse = await fetch(`${endpoint.httpBaseUrl}/ssh`, {
+					signal: AbortSignal.timeout(10_000),
+				});
+				expect(sshResponse.status).toBe(400);
+				expect(await sshResponse.text()).toContain(
+					"websocket_upgrade_required",
+				);
+				await Effect.runPromise(adapter.pause(created.providerSandboxId));
+				await Effect.runPromise(
+					adapter.resume(
+						created.providerSandboxId,
+						LIVE_TIMEOUT_SECONDS,
+						"pause",
+					),
+				);
+				expect((await protectedRuntime()).status).toBe(401);
+
 				await Effect.runPromise(
 					adapter.extendTimeout(
 						created.providerSandboxId,

@@ -79,7 +79,7 @@ describe("cloud auth authority identity", () => {
 					leaseOwner: "worker",
 					nowMs: 150,
 				});
-				const fake = yield* (yield* SandboxProviders).get();
+				const fake = yield* (yield* SandboxProviders).get("fake");
 				const registry = yield* makeSandboxProviders({
 					registrations: [
 						{
@@ -95,7 +95,7 @@ describe("cloud auth authority identity", () => {
 								resume: () => {
 									resumed = true;
 									return Effect.fail(
-										new SandboxProviderError({ reason: "transient" }),
+										new SandboxProviderError({ code: "transient" }),
 									);
 								},
 							},

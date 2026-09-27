@@ -209,6 +209,11 @@ Publish with the [boxd CLI](https://docs.boxd.sh/cli/installation) on PATH:
 BOXD_API_KEY=... BOXD_ORG=<org> BOXD_MACHINE_SIZE=default infra/cloud-sandboxes/boxd-publish.sh <version>
 ```
 
+The publisher exchanges `BOXD_API_KEY` for the CLI's short-lived `BOXD_TOKEN`.
+With `BOXD_ORG`, it creates a shared template so other identities in that
+organization can restore it. Without an explicit org, use the same key owner
+for publication and the Worker.
+
 `BOXD_MACHINE_SIZE` should match the api's `BOXD_MACHINE_SIZE`: a restore
 keeps its snapshot's size, and the adapter resizes (a cold reboot) only when
 the placement differs. Copy the printed `BOXD_TEMPLATE_SNAPSHOT` /

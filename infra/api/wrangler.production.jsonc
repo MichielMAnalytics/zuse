@@ -83,10 +83,13 @@
 		"BOAT_TEMPLATE_SNAPSHOT": "zuse-base-v8",
 		"BOAT_TEMPLATE_VERSION": "8",
 		"BOAT_MACHINE_TYPE": "small",
+		// Template verified on Boxd; enable after the staging app flow is verified
+		// and the production BOXD_API_KEY secret is installed.
 		"BOXD_ADAPTER_ENABLED": "false",
-		"BOXD_TEMPLATE_SNAPSHOT": "",
-		"BOXD_TEMPLATE_VERSION": "",
+		"BOXD_TEMPLATE_SNAPSHOT": "zuse-base-v20260927-1",
+		"BOXD_TEMPLATE_VERSION": "20260927-1",
 		"BOXD_MACHINE_SIZE": "default",
+		"BOXD_ORG": "zuse",
 		"SANDBOX_DEFAULT_PROVIDER_ID": "box",
 		"CLOUD_BILLING_ENFORCEMENT_ENABLED": "false",
 		"CLOUD_BILLING_EXPORT_ENABLED": "false",

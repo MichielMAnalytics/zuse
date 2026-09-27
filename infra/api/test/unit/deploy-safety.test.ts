@@ -171,6 +171,7 @@ else process.exit(2);
 				"GITHUB_APP_PRIVATE_KEY",
 				"BOAT_API_KEY",
 			];
+			secrets.push("SLACK_CLIENT_SECRET", "SLACK_SIGNING_SECRET");
 			if (scenario !== "secret") secrets.push("BOXD_API_KEY");
 			await writeFile(
 				join(directory, "bunx"),

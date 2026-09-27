@@ -8,7 +8,7 @@
 #   e.g. boxd-publish.sh 1   →  snapshot "zuse-base-v1"
 #
 # Requires the boxd CLI (https://docs.boxd.sh/cli/installation); it reads
-# BOXD_API_KEY directly. Prints the BOXD_TEMPLATE_SNAPSHOT /
+# a session token obtained from BOXD_API_KEY. Prints the BOXD_TEMPLATE_SNAPSHOT /
 # BOXD_TEMPLATE_VERSION values to copy into the API wrangler configuration.
 set -euo pipefail
 
@@ -47,8 +47,16 @@ machine_exec() {
 	boxd machine exec ${org_args[@]+"${org_args[@]}"} "$machine_id" --timeout "$timeout" -- "$@"
 }
 
+# The CLI accepts BOXD_TOKEN, while bxd_ API keys must first be exchanged.
+# Pass the key through stdin so it never appears in curl's command arguments.
+# Exchange after the build so the one-hour session covers provisioning.
 echo "==> building runtime artifacts"
 "$script_dir/prepare-artifacts.sh"
+
+echo "==> authenticating publisher"
+BOXD_TOKEN="$(jq -n '{api_key: env.BOXD_API_KEY}' | curl --proto '=https' --proto-redir '=https' -fsS --max-time 60 \
+	-H 'Content-Type: application/json' --data-binary @- https://app.boxd.sh/api/v1/auth/token | jq -er '.token | select(type == "string" and length > 0)')"
+export BOXD_TOKEN
 
 echo "==> creating builder machine"
 # Isolation is inherited by every restore, matching the adapter's placement.
