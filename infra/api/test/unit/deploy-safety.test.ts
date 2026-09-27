@@ -141,7 +141,12 @@ else process.exit(2);
 		"auth-provider",
 		"billing",
 		"ready",
+		"boxd-only-ready",
+		"boxd-only-disabled-auth",
+		"boxd-only-default-auth",
 	])("checks enabled boxd prerequisites before deployment: %s", async (scenario) => {
+		const boxdOnly = scenario.startsWith("boxd-only-");
+		const ready = scenario === "ready" || scenario === "boxd-only-ready";
 		const directory = await mkdtemp(join(tmpdir(), "zuse-deploy-test-"));
 		try {
 			const config = parse(await readFile(productionWranglerConfigUrl, "utf8"));
@@ -155,6 +160,16 @@ else process.exit(2);
 			config.vars.BOXD_TEMPLATE_SNAPSHOT =
 				scenario === "snapshot" ? "" : "zuse-base-v1";
 			config.vars.BOXD_TEMPLATE_VERSION = scenario === "version" ? " " : "1";
+			if (boxdOnly) {
+				config.vars.E2B_ADAPTER_ENABLED = "false";
+				config.vars.BOAT_ADAPTER_ENABLED = "false";
+				config.vars.SANDBOX_DEFAULT_PROVIDER_ID = "boxd";
+				delete config.vars.E2B_TEMPLATE_ID;
+				delete config.vars.E2B_TEMPLATE_VERSION;
+				if (scenario !== "boxd-only-default-auth")
+					config.vars.CLOUD_AUTH_PROVIDER_ID =
+						scenario === "boxd-only-ready" ? "boxd" : "e2b";
+			}
 			await writeFile(
 				join(directory, "wrangler.production.jsonc"),
 				JSON.stringify(config),
@@ -163,8 +178,7 @@ else process.exit(2);
 				"RELAY_MINT_PRIVATE_JWK",
 				"WORKOS_API_KEY",
 				"CF_API_TOKEN",
-				"E2B_API_KEY",
-				"E2B_WEBHOOK_SECRET",
+				...(boxdOnly ? [] : ["E2B_API_KEY", "E2B_WEBHOOK_SECRET"]),
 				"CLOUD_CREDENTIAL_VAULT_KEY",
 				"POLAR_ACCESS_TOKEN",
 				"POLAR_WEBHOOK_SECRET",
@@ -195,9 +209,8 @@ else process.exit(2);
 					},
 				},
 			);
-			expect(result.status).toBe(scenario === "ready" ? 0 : 1);
-			if (scenario === "ready")
-				expect(result.stdout).toContain("TEST_DEPLOY_REACHED");
+			expect(result.status, result.stderr).toBe(ready ? 0 : 1);
+			if (ready) expect(result.stdout).toContain("TEST_DEPLOY_REACHED");
 			else {
 				expect(result.stdout).not.toContain("TEST_DEPLOY_REACHED");
 				expect(result.stderr).toContain(
@@ -205,7 +218,7 @@ else process.exit(2);
 						? "BOXD_TEMPLATE_SNAPSHOT"
 						: scenario === "version"
 							? "BOXD_TEMPLATE_VERSION"
-							: scenario === "auth-provider"
+							: scenario === "auth-provider" || boxdOnly
 								? "CLOUD_AUTH_PROVIDER_ID"
 								: scenario === "billing"
 									? "CLOUD_BILLING_ENFORCEMENT_ENABLED"

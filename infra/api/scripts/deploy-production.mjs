@@ -22,6 +22,7 @@ const config = parse(readFileSync(configPath, "utf8"));
 const vars = config.vars ?? {};
 const boat = readBoatEnvironment(vars);
 const boatEnabled = boat.BOAT_ADAPTER_ENABLED === "true";
+const e2bEnabled = vars.E2B_ADAPTER_ENABLED === "true";
 const boxdEnabled = vars.BOXD_ADAPTER_ENABLED === "true";
 if (
 	boxdEnabled &&
@@ -51,8 +52,12 @@ const requiredValues = {
 		: {}),
 	HYPERDRIVE: config.hyperdrive?.[0]?.id,
 	R2: config.r2_buckets?.[0]?.bucket_name,
-	E2B_TEMPLATE_ID: vars.E2B_TEMPLATE_ID,
-	E2B_TEMPLATE_VERSION: vars.E2B_TEMPLATE_VERSION,
+	...(e2bEnabled
+		? {
+				E2B_TEMPLATE_ID: vars.E2B_TEMPLATE_ID,
+				E2B_TEMPLATE_VERSION: vars.E2B_TEMPLATE_VERSION,
+			}
+		: {}),
 	CLOUD_WORKSPACE_RUNTIME_MANIFEST_URL:
 		vars.CLOUD_WORKSPACE_RUNTIME_MANIFEST_URL,
 	CLOUD_WORKSPACE_RUNTIME_SIGNING_PUBLIC_JWK:
@@ -79,27 +84,23 @@ const missingValues = Object.entries(requiredValues)
 	.filter(([, value]) => typeof value !== "string" || value.trim() === "")
 	.map(([name]) => name);
 const enabledAdapters = new Set([
-	"e2b",
+	...(e2bEnabled ? ["e2b"] : []),
 	...(boatEnabled ? ["box", "boat"] : []),
 	...(boxdEnabled ? ["boxd"] : []),
 ]);
 const cloudAuthProvider =
-	typeof vars.CLOUD_AUTH_PROVIDER_ID === "string"
+	(typeof vars.CLOUD_AUTH_PROVIDER_ID === "string"
 		? vars.CLOUD_AUTH_PROVIDER_ID.trim()
-		: "";
-if (cloudAuthProvider !== "" && !enabledAdapters.has(cloudAuthProvider)) {
+		: "") || "e2b";
+if (!enabledAdapters.has(cloudAuthProvider)) {
 	console.error(
 		`CLOUD_AUTH_PROVIDER_ID names a provider that is not enabled: ${cloudAuthProvider}.`,
 	);
 	process.exit(1);
 }
-if (
-	vars.E2B_ADAPTER_ENABLED !== "true" ||
-	vars.POLAR_ENVIRONMENT !== "production" ||
-	missingValues.length > 0
-) {
+if (vars.POLAR_ENVIRONMENT !== "production" || missingValues.length > 0) {
 	console.error(
-		`Production configuration is incomplete: ${missingValues.join(", ") || "E2B_ADAPTER_ENABLED/POLAR_ENVIRONMENT"}.`,
+		`Production configuration is incomplete: ${missingValues.join(", ") || "POLAR_ENVIRONMENT"}.`,
 	);
 	process.exit(1);
 }
@@ -125,8 +126,7 @@ const requiredSecrets = [
 	"RELAY_MINT_PRIVATE_JWK",
 	"WORKOS_API_KEY",
 	"CF_API_TOKEN",
-	"E2B_API_KEY",
-	"E2B_WEBHOOK_SECRET",
+	...(e2bEnabled ? ["E2B_API_KEY", "E2B_WEBHOOK_SECRET"] : []),
 	"CLOUD_CREDENTIAL_VAULT_KEY",
 	"POLAR_ACCESS_TOKEN",
 	"POLAR_WEBHOOK_SECRET",
