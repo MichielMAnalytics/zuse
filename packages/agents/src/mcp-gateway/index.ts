@@ -45,9 +45,6 @@ import {
 
 type JsonObject = Record<string, unknown>;
 
-const IDLE_TIMEOUT_MS = 30 * 60 * 1_000;
-const MAX_LIFETIME_MS = 8 * 60 * 60 * 1_000;
-
 export const APP_MCP_SERVER_NAME = "zuse";
 const APP_MCP_PATH = "/mcp";
 
@@ -121,8 +118,6 @@ export interface CodexHttpMcpServerConfig {
 interface RegistryRecord {
 	readonly sessionId: string;
 	readonly tokenHash: string;
-	readonly issuedAt: number;
-	readonly expiresAt: number;
 	readonly scopes: {
 		readonly browser: boolean;
 		readonly orchestration: boolean;
@@ -132,13 +127,16 @@ interface RegistryRecord {
 		readonly interaction?: boolean;
 	};
 	readonly ctx: McpGatewaySessionContext;
-	readonly lastUsedAt: number;
 }
 
 let serverPromise: Promise<{
 	readonly server: HttpServer;
 	readonly port: number;
 }> | null = null;
+// Credentials belong to the live provider handle, including idle time between
+// turns. Drivers close that handle on disposal or transport loss; replacement
+// also revokes its token. A wall-clock expiry strands long-lived clients because
+// their bearer token is fixed at process startup and cannot be refreshed.
 const recordsBySession = new Map<string, RegistryRecord>();
 const recordsByHash = new Map<string, RegistryRecord>();
 
@@ -159,26 +157,13 @@ export const parseMcpBearerAuthorization = (
 	return match?.[1] ?? null;
 };
 
-const pruneExpired = (now = Date.now()): void => {
-	for (const record of recordsBySession.values()) {
-		if (now > record.expiresAt || now - record.lastUsedAt > IDLE_TIMEOUT_MS) {
-			recordsBySession.delete(record.sessionId);
-			recordsByHash.delete(record.tokenHash);
-		}
-	}
-};
-
 const resolveRecord = (rawToken: string): RegistryRecord | null => {
-	pruneExpired();
 	const hash = tokenHash(rawToken);
 	const record = recordsByHash.get(hash);
 	if (record === undefined || !constantTimeEqual(hash, record.tokenHash)) {
 		return null;
 	}
-	const refreshed = { ...record, lastUsedAt: Date.now() };
-	recordsBySession.set(refreshed.sessionId, refreshed);
-	recordsByHash.set(refreshed.tokenHash, refreshed);
-	return refreshed;
+	return record;
 };
 
 const writeText = (res: ServerResponse, status: number, body: string): void => {
@@ -506,15 +491,11 @@ export const issueMcpGatewaySession = async (
 	await revokeMcpGatewaySession(input.sessionId);
 	const token = randomBytes(32).toString("base64url");
 	const hash = tokenHash(token);
-	const now = Date.now();
 	const record: RegistryRecord = {
 		sessionId: input.sessionId,
 		tokenHash: hash,
-		issuedAt: now,
-		expiresAt: now + MAX_LIFETIME_MS,
 		scopes: input.scopes,
 		ctx: input.ctx,
-		lastUsedAt: now,
 	};
 	recordsBySession.set(input.sessionId, record);
 	recordsByHash.set(hash, record);
@@ -565,13 +546,11 @@ export const revokeAllMcpGatewaySessions = async (): Promise<void> => {
 export const mcpGatewayDiagnostics = (): {
 	readonly activeSessionCount: number;
 } => {
-	pruneExpired();
 	return { activeSessionCount: recordsBySession.size };
 };
 
 export const __testing = {
 	parseMcpBearerAuthorization,
-	pruneExpired,
 	resolveRecord,
 	closeServer: async () => {
 		const current = serverPromise;

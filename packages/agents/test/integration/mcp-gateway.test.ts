@@ -1,8 +1,12 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
-import { __testing, issueMcpGatewaySession } from "@zuse/agents/mcp-gateway";
-import { afterAll, describe, expect, test } from "vitest";
+import {
+	__testing,
+	issueMcpGatewaySession,
+	mcpGatewayDiagnostics,
+} from "@zuse/agents/mcp-gateway";
+import { afterAll, describe, expect, test, vi } from "vitest";
 
 const mcpPost = async (
 	url: string,
@@ -204,6 +208,45 @@ describe("MCP gateway", () => {
 		).toBe(401);
 	});
 
+	test("keeps a live provider authenticated across idle periods and long sessions", async () => {
+		const issued = await issueMcpGatewaySession({
+			sessionId: "long-lived-test",
+			scopes: { browser: false, orchestration: true },
+			ctx: {
+				orchestration: {
+					deps: baseDeps,
+					requestPermission: async () => ({ _tag: "AllowOnce" }),
+					getRuntimeMode: () => "full-access",
+					getPermissionMode: () => "default",
+				},
+			},
+		});
+		const issuedAt = Date.now();
+		const now = vi.spyOn(Date, "now");
+		try {
+			const activeSessionCount = mcpGatewayDiagnostics().activeSessionCount;
+			for (const elapsed of [31 * 60_000, 9 * 60 * 60_000]) {
+				now.mockReturnValue(issuedAt + elapsed);
+				expect(mcpGatewayDiagnostics().activeSessionCount).toBe(
+					activeSessionCount,
+				);
+				const response = await callTool(
+					issued.endpoint,
+					issued.token,
+					"whoami",
+					{},
+				);
+				expect(response.status).toBe(200);
+				expect(response.raw).toContain("session_1");
+			}
+			await issued.close();
+			expect((await listTools(issued.endpoint, issued.token)).status).toBe(401);
+		} finally {
+			now.mockRestore();
+			await issued.close();
+		}
+	});
+
 	test("an obsolete session handle cannot revoke its replacement", async () => {
 		const first = await issueMcpGatewaySession({
 			sessionId: "replacement-test",
@@ -230,6 +273,7 @@ describe("MCP gateway", () => {
 			},
 		});
 
+		expect((await listTools(first.endpoint, first.token)).status).toBe(401);
 		await first.close();
 
 		expect(
