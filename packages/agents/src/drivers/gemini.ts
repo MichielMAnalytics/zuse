@@ -482,12 +482,14 @@ export const startGeminiSession = (
 		});
 
 		child.on("error", (err) => {
+			void mcpGatewaySession.close();
 			if (closed) return;
 			Queue.offerUnsafe(events, { _tag: "Error", message: err.message });
 			Queue.endUnsafe(events);
 		});
 
 		child.on("close", (code, signal) => {
+			void mcpGatewaySession.close();
 			rl.close();
 			const diagnostics = formatGeminiDiagnostics(diagnosticTail());
 			const exitDetail =

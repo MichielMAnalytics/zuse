@@ -2017,6 +2017,7 @@ export const startClaudeSession = (
 				Effect.sync(() => {
 					checkpointBatcher.flush();
 					releasePendingQuestions("transport_lost");
+					void mcpGatewaySession.close();
 					Queue.endUnsafe(events);
 				}),
 			),

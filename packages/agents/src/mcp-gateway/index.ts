@@ -484,6 +484,7 @@ const ensureServer = async (): Promise<{
 	return serverPromise;
 };
 
+/** Issues credentials owned by a provider handle; close them on disposal or transport loss. */
 export const issueMcpGatewaySession = async (
 	input: McpGatewayIssueInput,
 ): Promise<McpGatewaySession> => {
@@ -543,6 +544,7 @@ export const revokeAllMcpGatewaySessions = async (): Promise<void> => {
 	recordsByHash.clear();
 };
 
+/** Reports registered provider sessions, including live sessions idle between turns. */
 export const mcpGatewayDiagnostics = (): {
 	readonly activeSessionCount: number;
 } => {
