@@ -647,8 +647,10 @@ export const CloudProjectsPrepareRpc = Rpc.make("cloud.projects.prepare", {
 });
 export const CloudAccountImageStatusRpc = Rpc.make("cloud.image.status", {
 	payload: Schema.Union([
-		Schema.Void,
+		// Void accepts and discards values; match the provider payload first so
+		// desktop RPC calls preserve provider selection in both directions.
 		Schema.Struct({ providerId: Schema.optional(Schema.String) }),
+		Schema.Void,
 	]),
 	success: CloudAccountImage,
 	error: CloudWorkspaceOpError,
