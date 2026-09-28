@@ -138,7 +138,7 @@ import { DRAFT_SESSION_ID, useSessionsStore } from "~/store/sessions";
 import { useUiStore } from "~/store/ui";
 import { useWorkspaceStore } from "~/store/workspace";
 import { EMPTY_WORKTREES, useWorktreesStore } from "~/store/worktrees";
-import { commandEnabledLocalDevice } from "../lib/device-bridge-binding.ts";
+import { bindCloudWorkspaceToLocalDevice } from "../lib/device-bridge-binding.ts";
 import { PROVIDER_LABEL } from "../lib/provider-labels.ts";
 import { ChatStartupView } from "./chat-startup-view.tsx";
 import {
@@ -1123,10 +1123,8 @@ export function ChatLanding() {
 			let staged = false;
 			let stagedMessage: { ref: SessionRef; id: MessageId } | null = null;
 			try {
-				const localDevice = await commandEnabledLocalDevice();
 				const launch = await runControlPlane((control) =>
 					control["cloud.workspaces.create"]({
-						localDeviceId: localDevice?.deviceId,
 						projectId: cloudProject.projectId,
 						providerId: selectedCloudProviderId,
 						...(selectedCloudSizeId === null
@@ -1144,6 +1142,7 @@ export function ChatLanding() {
 						idempotencyKey: crypto.randomUUID(),
 					}),
 				);
+				await bindCloudWorkspaceToLocalDevice(launch.workspace.workspaceId);
 				const title =
 					input.text.trim().split(/\r?\n/u, 1)[0]?.slice(0, 80) ||
 					launch.workspace.branch;
